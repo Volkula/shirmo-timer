@@ -12,6 +12,8 @@
   let size = 40;
   let shape = "square";
   let pushTimer = 0;
+  let seq = 0;
+  let pushedAt = 0;
   let fxOn = false;
   let kind = "";
   let power = 50;
@@ -113,26 +115,37 @@
     };
   }
 
+  function postPlayers(body) {
+    if (!ctx || !ctx.roomId) return;
+    seq += 1;
+    body.seq = seq;
+    pushedAt = Date.now();
+    fetch("/api/rooms/" + ctx.roomId + "/events", {
+      method: "POST",
+      headers: ctx.headers || { "content-type": "application/json" },
+      body: JSON.stringify(body)
+    }).catch(function () {});
+  }
+
   function pushPlayers() {
     if (!playersOn || !ctx || !ctx.roomId) return;
     clearTimeout(pushTimer);
     pushTimer = setTimeout(function () {
-      fetch("/api/rooms/" + ctx.roomId + "/events", {
-        method: "POST",
-        headers: ctx.headers || { "content-type": "application/json" },
-        body: JSON.stringify(snapshot())
-      }).catch(function () {});
+      if (!playersOn) return;
+      postPlayers(snapshot());
     }, 120);
   }
 
   function sendPlayers(body) {
     if (!ctx || !ctx.roomId) return;
     clearTimeout(pushTimer);
-    fetch("/api/rooms/" + ctx.roomId + "/events", {
-      method: "POST",
-      headers: ctx.headers || { "content-type": "application/json" },
-      body: JSON.stringify(body)
-    }).catch(function () {});
+    postPlayers(body);
+  }
+
+  function maybeLive() {
+    if (!playersOn || mode !== "run") return;
+    if (Date.now() - pushedAt < 1000) return;
+    postPlayers(snapshot());
   }
 
   function paint() {
@@ -145,6 +158,7 @@
       pushPlayers();
     }
     showLeft(mode === "idle" ? readSet(false) : remain);
+    maybeLive();
     if (!nodes) return;
     nodes.left.classList.toggle("is-run", mode === "run");
     nodes.left.classList.toggle("is-done", mode === "done");
