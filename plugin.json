@@ -1,0 +1,6 @@
+{
+  "id": "timer",
+  "name": "Таймер",
+  "version": "1.0.0",
+  "main": "plugin.js"
+}
